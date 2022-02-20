@@ -2,3 +2,4 @@ Welcome to my repository! The topic of this corpus that is game music with a foc
 As you can probably tell there is a huge amount of categories out there. It is possible to make categories based on time period or game genre or you can make distinctions based on the music itself. What is also interesting to note is that the popular video games in the beginning were mainly Japanese such as Mario and Final Fantasy. So it could also be a fun project to compare Western and Japanese music.
 I think that in the beginning because of the classic three notes it is easier to identify game music but later on there would be a blurry distinction between regular music and game music.
 PLEASE DO NOT SHOW THIS PORTFOLIO IN CLASS
+A line I wrote on my local computer
