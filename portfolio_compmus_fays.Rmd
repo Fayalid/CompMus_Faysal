@@ -30,7 +30,10 @@ library(compmus)
 ```
 
 ```{r plots, echo=FALSE}
-gp <-get_playlist_audio_features("","37i9dQZF1DXdfOcg1fm0VG?")
+gp <-get_playlist_audio_features("","37i9dQZF1DXdfOcg1fm0VG")
+jp <-get_playlist_audio_features("","74pvRnRgBqgHXPj8uQ4XWy")
+wp <-get_playlist_audio_features("","5VKUF51va5ypE9hozTQnAv")
+
 gp %>%                    
      ggplot(                     
          aes(
@@ -151,8 +154,43 @@ compmus_long_distance(
   theme_minimal() +
   scale_fill_viridis_c(guide = NULL)
 ```
-*** 
-Here we compared the classic Super Mario Bros theme song with the Super Marion 64 one. The song is the same. The only difference is that in the first one is in 8-bit. As you can see this makes a big difference because according to this audio-analysis these two are not similar at all.
 
-### Next
+***
+Here we compared the classic Super Mario Bros theme song with the Super Mario 64 one. The song is the same. The only difference is that in the first one is in 8-bit. As you can see this makes a big difference because according to this audio-analysis these two are not similar at all.
 
+### Tempogram
+
+```{r tempogram, echo=FALSE}
+graveola <- get_tidy_audio_analysis("72LWO03wjiyCVqxrNUpx2V")
+
+graveola %>%
+    tempogram(window_size = 8, hop_size = 1, cyclic = FALSE) %>%
+    ggplot(aes(x = time, y = bpm, fill = power)) +
+    geom_raster() +
+    scale_fill_viridis_c(guide = "none") +
+    labs(x = "Time (s)", y = "Tempo (BPM)") +
+    theme_classic()
+
+graveola %>%
+    tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) %>%
+    ggplot(aes(x = time, y = bpm, fill = power)) +
+    geom_raster() +
+    scale_fill_viridis_c(guide = "none") +
+    labs(x = "Time (s)", y = "Tempo (BPM)") +
+    theme_classic()
+```
+
+### Histogram of tempi
+
+```{r Histogram of tempi}
+
+wp %>%
+    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Western music")
+
+jp %>%
+    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Japanese music")
+
+```
+
+***
+Here we see two density histogram plots from Japanese and Western game-music. As you can see Japanese game music has a mean around of 120 BPM. While Western game music has two peaks around 85 and 120. This may mean that in the western hemisphere there is more variety in tempo.  
