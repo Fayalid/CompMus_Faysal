@@ -1,5 +1,5 @@
 ---
-title: "Portfolio "
+title: "Western vs Japanese Game Music "
 author: "Faysal el Kaaoichi"
 output: 
   flexdashboard::flex_dashboard:
@@ -17,9 +17,12 @@ knitr::opts_chunk$set(error = TRUE)
 ```
 ### Introduction
 
-Welcome to my repository! The topic of this corpus that is game music with a focus on theme music. Over the years games have been evolving not only in the fields of graphics or game mechanics but also in the field of music. In the early stages of videogames, in the eighties, games could not process more than three notes meaning it was not possible to write a tune with complex multi-layered melodies. Over time this changed. It is interesting to look at how this progressed and what the significant changes are. As you can probably tell there is a huge amount of categories out there. It is possible to make categories based on time period or game genre or you can make distinctions based on the music itself. What is also interesting to note is that the popular video games in the beginning were mainly Japanese such as Mario and Final Fantasy. So it could also be a fun project to compare Western and Japanese music. I think that in the beginning because of the classic three notes it is easier to identify game music but later on there would be a blurry distinction between regular music and game music. It is interesting to note that there is a grouping towards a very low valence and a very high intrumentalness. This means that the music in this corpus, in general, is pretty negative and uses almost no voices.
+In this portfolio we are going to explore the differences between Japanese and Western game music. Since games have come a long way since the eighties not only with regards to game graphics and mechanics. But also in terms of music. In the early stages of videogames, in the eighties, games could not process more than three notes meaning it was not possible to write a tune with complex multi-layered melodies. Over time this changed. Now there is a sound engineering department and an orchestra. The two biggest producers of games over the years is Japan and the West. This is where the focus on this portfolio will be on. The main question is is there any differentiation between the two categories. The music used for this research is music from classic games such as Mario but also more modern games.So it is a mix between old, new and popular and unpopular games. The corpus exists of 50 Japanese and 50 Western songs. An expected division is that for Japanese games there are Japanese music composer, but for the game Death Stranding with songs such as The Drop it seems that there is a Western composer Ludvig Forssell.
 
-### Visualisation
+***
+<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2Gcw0OM0KSggHHvYCSqcaW?utm_source=generator" width="100%" height="380" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+
+### Overview
 
 ```{r load-packages, include=FALSE, error=TRUE, message=FALSE}
 library(dplyr)
@@ -33,6 +36,14 @@ library(recipes)
 #library(tidymodels)
 library(ggdendro)
 library(heatmaply)
+library(lubridate)
+library(rsample)
+library(tune)
+library(workflows)
+library(class)
+library(parsnip)
+library(yardstick)
+library(ranger)
 ```
 
 ```{r plots, echo=FALSE}
@@ -40,170 +51,129 @@ gp <-get_playlist_audio_features("","37i9dQZF1DXdfOcg1fm0VG")
 jp <-get_playlist_audio_features("","74pvRnRgBqgHXPj8uQ4XWy")
 wp <-get_playlist_audio_features("","5VKUF51va5ypE9hozTQnAv")
 
-gp %>%                    
-     ggplot(                     
-         aes(
-             x = valence,
-             y = key,
-             size = loudness,
-             color =  instrumentalness)
-     ) +
-     geom_point() +              
-     geom_rug(size = 0.1) #+      
-#     geom_text(                 
-#         aes(
-#             x = valence,
-#             y = energy
-#        ))
-```
-
-
-```{r plot, echo=FALSE}
-mario <-
-  get_tidy_audio_analysis("1RW6xbDYGaw0C6JPvf9rqd?") %>% # Change URI.
-  compmus_align(bars, segments) %>%                     # Change `bars`
-  select(bars) %>%                                      #   in all three
-  unnest(bars) %>%                                      #   of these lines.
-  mutate(
-    pitches =
-      map(segments,
-        compmus_summarise, pitches,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  ) %>%
-  mutate(
-    timbre =
-      map(segments,
-        compmus_summarise, timbre,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  )
-```
-*** 
-It is interesting to note that there is a grouping towards a very low valence and a very high intrumentalness. This means that the music in this corpus, in general, is pretty negative and uses almost no voices.
-
-### Timbre
-
-```{r timbre, echo=FALSE}
-mario %>%
-  compmus_gather_timbre() %>%
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = basis,
-      fill = value
+GM <-
+    bind_rows(
+        jp %>% mutate(category = "Japanese Music"),
+        wp %>% mutate(category = "Western Music")
     )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
-  scale_fill_viridis_c() +                              
-  theme_classic() +
-  labs(title = "Cepstrogram")
-```
 
-### Self-similarity matrix
-
-```{r ssm, echo=FALSE}
-mario %>%
-  compmus_self_similarity(timbre, "cosine") %>% 
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
-  ) +
-  geom_tile() +
-  coord_fixed() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_classic() +
-  labs(title = "cosine self-similarity matrix", x = "", y = "")
-```
-
-### Comparing Mario theme songs
-
-```{r compare_mario, echo=FALSE}
-## Super Mario Bros Classic
-super_mario_bros <-
-  get_tidy_audio_analysis("1RW6xbDYGaw0C6JPvf9rqd") %>%
-  select(segments) %>%
-  unnest(segments) %>%
-  select(start, duration, pitches)
-## Super Mario 64
-super_mario_64 <-
-  get_tidy_audio_analysis("2ZbxXIAU2zrRgWGfOOhsTd") %>%
-  select(segments) %>%
-  unnest(segments) %>%
-  select(start, duration, pitches)
-
-compmus_long_distance(
-  super_mario_bros %>% mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
-  super_mario_64 %>% mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
-  feature = pitches,
-  method = "euclidean"
-) %>%
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
-  ) +
-  geom_tile() +
-  coord_equal() +
-  labs(x = "Super Mario Bros", y = "Super Mario 64") +
-  theme_minimal() +
-  scale_fill_viridis_c(guide = NULL)
+GM %>%                    
+    ggplot(                     
+        aes(
+            x = key,
+            y = valence,
+            size = instrumentalness,
+            color =  category)
+    ) +
+    geom_point(alpha = 0.45) +              
+    geom_rug(size = 0.1) +ggtitle("Overview differences between Japanese and Western game music")
 ```
 
 ***
-Here we compared the classic Super Mario Bros theme song with the Super Mario 64 one. The song is the same. The only difference is that in the first one is in 8-bit. As you can see this makes a big difference because according to this audio-analysis these two are not similar at all.
+This is a plot to have a quick overview using the Spotify API. In the x axis the key is displayed. 0 stands for C and 1 for C# and 2 for D and so forth. 
 
-### Tempogram
+There are no big differences in both categories seem pretty even. There is a bit of a difference in instrumentalness however, if you look at keys 3 and 6 which are D# and F# respectively it is noticeable that the instrumentallnes for Japanese music is pretty low. This means that only vocals are used. 
 
-```{r tempogram, echo=FALSE}
-graveola <- get_tidy_audio_analysis("72LWO03wjiyCVqxrNUpx2V")
+The other major finding is that Western music overall tends to have a lower valence, which means the music is more negative, for example sad, angry or depressed.
 
-graveola %>%
-    tempogram(window_size = 8, hop_size = 1, cyclic = FALSE) %>%
-    ggplot(aes(x = time, y = bpm, fill = power)) +
-    geom_raster() +
-    scale_fill_viridis_c(guide = "none") +
-    labs(x = "Time (s)", y = "Tempo (BPM)") +
-    theme_classic()
+### Differences in statistics 
+```{r}
+japan <-
+  get_playlist_audio_features(
+    "thesoundsofspotify",
+    "74pvRnRgBqgHXPj8uQ4XWy"
+  ) %>%
+  slice(1:30) %>%
+  add_audio_analysis()
+west <-
+  get_playlist_audio_features(
+    "thesoundsofspotify",
+    "5VKUF51va5ypE9hozTQnAv"
+  ) %>%
+  slice(1:30) %>%
+  add_audio_analysis()
+game <-
+  japan %>%
+  mutate(genre = "Japan") %>%
+  bind_rows(west %>% mutate(genre = "West"))
 
-graveola %>%
-    tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) %>%
-    ggplot(aes(x = time, y = bpm, fill = power)) +
-    geom_raster() +
-    scale_fill_viridis_c(guide = "none") +
-    labs(x = "Time (s)", y = "Tempo (BPM)") +
-    theme_classic()
+game %>%
+  mutate(
+    sections =
+      map(
+        sections,                                    # sections or segments
+        summarise_at,
+        vars(tempo, loudness, duration),             # features of interest
+        list(section_mean = mean, section_sd = sd)   # aggregation functions
+      )
+  ) %>%
+  unnest(sections) %>%
+  ggplot(
+    aes(
+      x = tempo,
+      y = tempo_section_sd,
+      colour = genre,
+      alpha = loudness
+    )
+  ) +
+  geom_point(aes(size = duration / 60)) +
+  geom_rug() +
+  theme_minimal() +
+  ylim(0, 5) +
+  labs(
+    x = "Mean Tempo (bpm)",
+    y = "SD Tempo",
+    colour = "Genre",
+    size = "Duration (min)",
+    alpha = "Volume (dBFS)"
+  )
+
 ```
+
+***
+In this plot the mean and the standard deviation in tempo are being compared. The mean tempo for Japanese music tend to be grouped between 120 and 150 BPM while Western music seems to be all over the place. For Western this seems also to be the case for the standard deviation. While for Japanese music the standard deviation is pretty low. Furthermore there seems there is no big difference between volume and duration. 
 
 ### Histogram of tempi
 
-```{r Histogram of tempi}
+```{r Histogram of tempi, fig.show="hold", out.width="50%"}
 
 wp %>%
-    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Western music")
+    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Western music") + theme_classic()
 
 jp %>%
-    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Japanese music")
+    ggplot(aes(x = tempo)) + geom_density() + labs(title = "Japanese music") + theme_classic()
 
 ```
 
 ***
-Here we see two density histogram plots from Japanese and Western game-music. As you can see Japanese game music has a mean around of 120 BPM. While Western game music has two peaks around 85 and 120. This may mean that in the western hemisphere there is more variety in tempo.  
+Here we see two density histogram plots from Japanese and Western game-music. As you can see Japanese game music has a mean around of 120 BPM. While Western game music has two peaks around 85 BPM and 120 BPM. When the distribution has two peaks it is called a bimodial distribution. This may mean that in the western hemisphere there are two measures of BPM that have the highest frequency. But 85 BPM may be a bit more popular. This explains why in the previous plot Western music seemed to be all over the place.
+
+### Differences in Timbre
+```{r}
+game %>%
+  mutate(
+    timbre =
+      map(
+        segments,
+        compmus_summarise,
+        timbre,
+        method = "mean"
+      )
+  ) %>%
+  select(genre, timbre) %>%
+  compmus_gather_timbre() %>%
+  ggplot(aes(x = basis, y = value, fill = genre)) +
+  geom_violin() +
+  scale_fill_viridis_d() +
+  labs(x = "Spotify Timbre Coefficients", y = "", fill = "Genre")
+```
+
+***
+This plot shows the average timbre coefficients in a violin plot.The coefficients are for both categories pretty similar. They are both spread out for c02. But that might also be the biggest distinction since the western violin plot is covers a bigger range which means that the probability is more spread out. 
 
 ### Dendogram Japanese and Western Games
 
-```{r Dendogram of Japanese games, echo=FALSE}
+```{r Dendogram of Japanese games, echo=FALSE, fig.height = 3, fig.width = 5}
 
 get_conf_mat <- function(fit) {
   outcome <- .get_tune_outcome_names(fit)
@@ -223,6 +193,7 @@ get_pr <- function(fit) {
 
 halloween <-
     get_playlist_audio_features("bnfcollection", "2Gcw0OM0KSggHHvYCSqcaW") %>%
+    slice(1:30) %>%
     add_audio_analysis() %>%
     mutate(
         segments = map2(segments, key, compmus_c_transpose),
@@ -278,4 +249,427 @@ halloween_dist %>%
 ```
 
 ***
-Here we can clearly see that there are some but not necissarily based wether on it is Japanese or Western game music
+This plot is a dendogram where there is a sample taken from each of the two playlists. But there does not seem to be a clear distinction between the two.
+
+### Classification
+```{r, echo=FALSE, fig.show="hold", out.width="50%"}
+jap <- 
+  get_playlist_audio_features("spotify", "74pvRnRgBqgHXPj8uQ4XWy")
+wst <- get_playlist_audio_features("spotify", "37i9dQZF1DWTujiC7wfofZ")
+game <-
+  bind_rows(
+    jap %>% mutate(playlist = "Japanese Games") %>% slice_head(n = 20),
+    wst %>% mutate(playlist = "Western Games") %>% slice_head(n = 20)
+    ) 
+
+game_features <-
+  game %>%  # For your portfolio, change this to the name of your corpus.
+  add_audio_analysis() %>% 
+  mutate(
+    playlist = factor(playlist),
+    segments = map2(segments, key, compmus_c_transpose),
+    pitches =
+      map(
+        segments,
+        compmus_summarise, pitches,
+        method = "mean", norm = "manhattan"
+      ),
+    timbre =
+      map(
+        segments,
+        compmus_summarise, timbre,
+        method = "mean",
+      )
+  ) %>%
+  mutate(pitches = map(pitches, compmus_normalise, "clr")) %>%
+  mutate_at(vars(pitches, timbre), map, bind_rows) %>%
+  unnest(cols = c(pitches, timbre))
+
+game_recipe <-
+  recipe(
+    playlist ~
+      danceability +
+      energy +
+      loudness +
+      speechiness +
+      acousticness +
+      instrumentalness +
+      liveness +
+      valence +
+      tempo +
+      duration +
+      C + `C#|Db` + D + `D#|Eb` +
+      E + `F` + `F#|Gb` + G +
+      `G#|Ab` + A + `A#|Bb` + B +
+      c01 + c02 + c03 + c04 + c05 + c06 +
+      c07 + c08 + c09 + c10 + c11 + c12,
+    data = game_features,          # Use the same name as the previous block.
+  ) %>%
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors())      # Converts to z-scores.
+  # step_range(all_predictors())    # Sets range to [0, 1].
+
+game_cv <- game_features %>% vfold_cv(5)
+
+knn_model <-
+  nearest_neighbor(neighbors = 1) %>%
+  set_mode("classification") %>% 
+  set_engine("kknn")
+game_knn <- 
+  workflow() %>% 
+  add_recipe(game_recipe) %>% 
+  add_model(knn_model) %>% 
+  fit_resamples(
+    game_cv, 
+    control = control_resamples(save_pred = TRUE)
+  )
+
+game_knn %>% get_conf_mat() %>% autoplot(type = "heatmap")
+
+forest_model <-
+  rand_forest() %>%
+  set_mode("classification") %>% 
+  set_engine("ranger", importance = "impurity")
+game_forest <- 
+  workflow() %>% 
+  add_recipe(game_recipe) %>% 
+  add_model(forest_model) %>% 
+  fit_resamples(
+    game_cv, 
+    control = control_resamples(save_pred = TRUE)
+  )
+
+workflow() %>% 
+  add_recipe(game_recipe) %>% 
+  add_model(forest_model) %>% 
+  fit(game_features) %>% 
+  pluck("fit", "fit", "fit") %>%
+  ranger::importance() %>% 
+  enframe() %>% 
+  mutate(name = fct_reorder(name, value)) %>% 
+  ggplot(aes(name, value)) + 
+  geom_col() + 
+  coord_flip() +
+  theme_minimal() +
+  labs(x = NULL, y = "Importance")
+
+game_features %>%
+  ggplot(aes(x = acousticness, y = c01, colour = playlist, size = energy)) +
+  geom_point(alpha = 0.8) +
+  scale_color_viridis_d() +
+  labs(
+    x = "Acousticness",
+    y = "Timbre Component 1",
+    size = "Energy",
+    colour = "Playlist"
+  )
+```
+
+***
+For these plots only twenty tracks for each playlist is used. Both precision and recall for the categories are pretty high. For Japanese games the precision is 85.7% and the recall is 90%. For Western games the precision is 89.5% and the recall is 85%. This means that there has to be some factor to which make a clear distinction between the two. If you look at the right plot you can see that the instrumentalness is a very big factor. This is something we already had some suspicions about in our overview in the beginning. When plotting some of the deciding factors, you can see that there can be some lines drawn based on acousticness and the c01 coefficient.
+
+### Comparing Chromagrams
+```{r plot, echo=FALSE, fig.show="hold", out.width="50%"}
+
+    
+face_of_our_new_hope <-
+    get_tidy_audio_analysis("4Er4Eq5De16sKwCV8nx4ej") %>%
+    select(segments) %>%
+    unnest(segments) %>%
+    select(start, duration, pitches)
+
+face_of_our_new_hope %>%
+    mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+    compmus_gather_chroma() %>% 
+    ggplot(
+        aes(
+            x = start + duration / 2,
+            width = duration,
+            y = pitch_class,
+            fill = value
+        )
+    ) +
+    geom_tile() +
+    labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+    theme_minimal() +
+    scale_fill_viridis_c() +ggtitle("The face of our new hope")
+
+the_drop <-
+    get_tidy_audio_analysis("6vIL1KWpWZOLhbpJ6xCjGU") %>%
+    select(segments) %>%
+    unnest(segments) %>%
+    select(start, duration, pitches)
+
+
+
+the_drop %>%
+    mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+    compmus_gather_chroma() %>% 
+    ggplot(
+        aes(
+            x = start + duration / 2,
+            width = duration,
+            y = pitch_class,
+            fill = value
+        )
+    ) +
+    geom_tile() +
+    labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+    theme_minimal() +
+    scale_fill_viridis_c() + ggtitle("The drop")
+
+FF7_REMAKE <-
+    get_tidy_audio_analysis("43SHYfEdVPCIag9L3xtUVm") %>%
+    select(segments) %>%
+    unnest(segments) %>%
+    select(start, duration, pitches)
+
+
+FF7_REMAKE %>%
+    mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+    compmus_gather_chroma() %>% 
+    ggplot(
+        aes(
+            x = start + duration / 2,
+            width = duration,
+            y = pitch_class,
+            fill = value
+        )
+    ) +
+    geom_tile() +
+    labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+    theme_minimal() +
+    scale_fill_viridis_c()+ggtitle("Final Fantasy VII Remake")
+
+FF10 <-
+    get_tidy_audio_analysis("72LWO03wjiyCVqxrNUpx2V") %>%
+    select(segments) %>%
+    unnest(segments) %>%
+    select(start, duration, pitches)
+
+
+FF10 %>%
+    mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+    compmus_gather_chroma() %>% 
+    ggplot(
+        aes(
+            x = start + duration / 2,
+            width = duration,
+            y = pitch_class,
+            fill = value
+        )
+    ) +
+    geom_tile() +
+    labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+    theme_minimal() +
+    scale_fill_viridis_c() +ggtitle("Hymn of the Fayth (FF10)")
+```
+
+*** 
+For the next set of plots we look at some individual tracks instead of the whole playlist. For the chromagrams we use the tracks The Face of our new hope and the Drop both from the Japanese game Death Stranding but a Western composer named Ludvig Forssell. The other are the main theme song of Final Fantasy 7 remake and Hymn of the Fayth also from the Final Fantasy series.
+
+In the face of our new hope the notes used are mainly Db and Ab. In the drop it is also mainly Db but also D. This means that probably all his songs are primarily in D or Db. The same is true for the Final Fantasy series. It seems that all of them use the D or Db note for the majority of the song. Of course it is a bit too rash to make a conclusion based on four samples only. 
+
+### Timbre
+
+```{r timbre, echo=FALSE, fig.show="hold", out.width="50%"}
+bandicoot <-
+  get_tidy_audio_analysis("73gyiXLAKUUtX8sAiE2gGV") %>% # Change URI.
+  compmus_align(bars, segments) %>%                     # Change `bars`
+  select(bars) %>%                                      #   in all three
+  unnest(bars) %>%                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) %>%
+  mutate(
+    timbre =
+      map(segments,
+        compmus_summarise, timbre,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+bandicoot %>%
+  compmus_gather_timbre() %>%
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = basis,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  scale_fill_viridis_c() +                              
+  theme_classic() + ggtitle("Crash Bandicoot")
+
+mario <-
+    get_tidy_audio_analysis("1RW6xbDYGaw0C6JPvf9rqd") %>% # Change URI.
+    compmus_align(bars, segments) %>%                     # Change `bars`
+    select(bars) %>%                                      #   in all three
+    unnest(bars) %>%                                      #   of these lines.
+    mutate(
+        pitches =
+            map(segments,
+                compmus_summarise, pitches,
+                method = "rms", norm = "euclidean"              # Change summary & norm.
+            )
+    ) %>%
+    mutate(
+        timbre =
+            map(segments,
+                compmus_summarise, timbre,
+                method = "rms", norm = "euclidean"              # Change summary & norm.
+            )
+    )
+
+mario %>%
+    compmus_gather_timbre() %>%
+    ggplot(
+        aes(
+            x = start + duration / 2,
+            width = duration,
+            y = basis,
+            fill = value
+        )
+    ) +
+    geom_tile() +
+    labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+    scale_fill_viridis_c() +                              
+    theme_classic() + ggtitle("Mario")
+```
+
+***
+In this plot we compare two classics from both worlds the classic Mario theme and the Crash Bandicoot theme. Both themes seem to have a constant presence of the c06 coefficient. Furthermore it is interesting to see that in the Mario theme, around 100 seconds, the melody changes and the energy transfers from c04 to c01. For the Crash Bandicoot theme the c04 is quite strong at the beginning that has probably to do with the strong beat at the beginning. Overall the two are quite dissimilar. 
+
+
+### Self-similarity matrix
+
+```{r ssm, echo=FALSE, fig.show="hold", out.width="50%"}
+mario %>%
+  compmus_self_similarity(timbre, "cosine") %>% 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic() +
+  labs(title = "Timbre", x = "", y = "Mario")
+
+mario %>%
+  compmus_self_similarity(pitches, "cosine") %>% 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic() +
+  labs(title = "Chroma", x = "", y = "")
+
+bandicoot %>%
+  compmus_self_similarity(timbre, "cosine") %>% 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic() +
+  labs(x = "", y = "Crash Bandicoot")
+
+bandicoot %>%
+  compmus_self_similarity(pitches, "cosine") %>% 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic() +
+  labs(x = "", y = "")
+```
+
+***
+Moving on with the comparison from the two classics. In this case we compare them through self similarity matrices. In the Mario case, in the chroma plot, there seems to be segments of multiple diagonal lines around the 70 seconds mark, the 125 seconds mark and at the end. If you listen around these marks you notice that the melody changes significantly. These changes are also visible in the timbre ssm where around these parts the chunk is very dark blue which means that these parts are dissimilar in comparison to other parts. 
+
+In the timbre ssm for Crash Bandicoot there is a bright band along the axis this is because the same notes are playing throughout the song. Also around the thirty second mark it becomes very dark blue this is because the beat changes in that time frame. 
+
+### Comparing Mario theme songs
+
+```{r compare_mario, echo=FALSE}
+## Super Mario Bros Classic
+super_mario_bros <-
+  get_tidy_audio_analysis("1RW6xbDYGaw0C6JPvf9rqd") %>%
+  select(segments) %>%
+  unnest(segments) %>%
+  select(start, duration, pitches)
+## Super Mario 64
+super_mario_64 <-
+  get_tidy_audio_analysis("2ZbxXIAU2zrRgWGfOOhsTd") %>%
+  select(segments) %>%
+  unnest(segments) %>%
+  select(start, duration, pitches)
+
+compmus_long_distance(
+  super_mario_bros %>% mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
+  super_mario_64 %>% mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
+  feature = pitches,
+  method = "euclidean"
+) %>%
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_equal() +
+  labs(x = "Super Mario Bros", y = "Super Mario 64") +
+  theme_minimal() +
+  scale_fill_viridis_c(guide = NULL)
+```
+
+***
+Here we compared the classic Super Mario Bros theme song with the Super Mario 64 one. The song is the same. The only difference is that in the first one the theme is in 8-bit. It is remarkable that there is no diagonal line. This means that the two songs are not similar at all. Or the musical parts are all switched up. But there are constant lines which are more highlighted than the others this may mean that they are played in the same key perhaps.
+
+### Discussion & Conclusion
+
+We have seen that there are some key differences between Japanese an Western game music. Such as the instrumentalness and the timbre coefficients. There were also key differences in tempo Western music does not have a standard tempo but seems to cluster around 120 BPM and 85 BPM. While the mean of Japanese music is around 120 BPM. Then we looked at individual tracks we compared Japanese games with a Western and Japanese composer and found that there were indeed some similarities. We also looked at two classic from both worlds and discussed the differences in timbre and chroma. Lastly we compared the old and new Mario theme songs and found that they were quite different as there was no line.
+
+*Discussion*
+
+We did find some key differences between the two categories. But it is was hard when looking at the individual tracks to generalize these conclusions over the whole category. Also there were only 50 tracks used of each category due to the speed of computability, so it might be premature to draw any conclusions. 
