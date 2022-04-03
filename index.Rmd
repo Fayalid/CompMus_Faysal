@@ -20,7 +20,7 @@ knitr::opts_chunk$set(error = TRUE)
 In this portfolio we are going to explore the differences between Japanese and Western game music. Since games have come a long way since the eighties not only with regards to game graphics and mechanics. But also in terms of music. In the early stages of videogames, in the eighties, games could not process more than three notes meaning it was not possible to write a tune with complex multi-layered melodies. Over time this changed. Now there is a sound engineering department and an orchestra. The two biggest producers of games over the years is Japan and the West. This is where the focus on this portfolio will be on. The main question is is there any differentiation between the two categories. The music used for this research is music from classic games such as Mario but also more modern games.So it is a mix between old, new and popular and unpopular games. The corpus exists of 50 Japanese and 50 Western songs. An expected division is that for Japanese games there are Japanese music composer, but for the game Death Stranding with songs such as The Drop it seems that there is a Western composer Ludvig Forssell.
 
 ***
-<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2Gcw0OM0KSggHHvYCSqcaW?utm_source=generator" width="100%" height="380" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+
 
 ### Overview
 
